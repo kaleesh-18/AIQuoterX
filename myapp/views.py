@@ -2,6 +2,7 @@ import json
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from .models import Employee
+
 def employee_crud(request):
     search_query = request.GET.get("search", "").strip().lower()
     
@@ -22,7 +23,7 @@ def employee_crud(request):
                 return JsonResponse({"success": True})
 
             elif action == "discard":
-                return JsonResponse({"success": True})  # Nothing changes in DB
+                return JsonResponse({"success": True})  
 
             elif action == "add":
                 name = data.get("name", "").strip()
