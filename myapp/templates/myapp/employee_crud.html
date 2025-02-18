@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employees</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        .button-group {
+            margin-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background: #f4f4f4;
+        }
+
+        th:first-child,
+        td:first-child {
+            border-right: none;
+            /* Remove line between checkbox and name column */
+        }
+
+        input {
+            border: none;
+            width: 100%;
+            outline: none;
+        }
+
+        #delete-selected,
+        #save-all,
+        #discard {
+            display: none;
+            /* Hide until items are selected */
+            background-color: red;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
+        #save-all {
+            background-color: green;
+        }
+
+        #discard {
+            background-color: gray;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Employees</h1>
+
+    <div class="button-group">
+        <button id="new-entry">New Employee</button>
+        <button id="save-all">Save</button>
+        <button id="discard">Discard</button>
+        <button id="delete-selected">Delete Selected</button>
+    </div>
+
+    <input type="text" id="search" placeholder="Search...">
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 50px;"><input type="checkbox" id="select-all"></th>
+                <th>Name</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Hidden row for adding new employees -->
+            <tr class="add-row" style="display: none;">
+                <td></td>
+                <td><input type="text" id="new-name" placeholder="Enter Name"></td>
+            </tr>
+
+            {% for emp in employees %}
+            <tr data-id="{{ emp.id }}">
+                <td><input type="checkbox" class="delete-checkbox"></td>
+                <td><input type="text" class="edit-name" value="{{ emp.name }}"></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        $(document).ready(function () {
+            $(".add-row").hide();
+            $("#save-all, #discard").hide();
+
+            // Function to load employees dynamically
+            function loadEmployees(searchQuery = "") {
+                $.ajax({
+                    url: "{% url 'employee_crud' %}",
+                    type: "GET",
+                    data: { search: searchQuery },
+                    success: function (data) {
+                        var employees = $(data).find("tbody").html(); // Extract updated table rows
+                        $("tbody").html(employees);
+                    }
+                });
+            }
+
+            // Call search functionality on keyup
+            $("#search").on("keyup", function () {
+                var searchValue = $(this).val().trim();
+                loadEmployees(searchValue);
+            });
+
+            // Show input row and buttons when clicking "New Employee"
+            $("#new-entry").click(function () {
+                $(".add-row").show();
+                $("#save-all, #discard").show();  // Show Save & Discard buttons
+                $("#new-entry").hide();  // Hide New Employee button
+                $("#new-name").focus();
+            });
+
+            // Discard changes (hide the input row and buttons)
+            $("#discard").click(function () {
+                $(".add-row").hide();
+                $("#save-all, #discard").hide();
+                $("#new-entry").show();
+                $("#new-name").val("");
+            });
+
+            // Auto-add new employee on blur or Enter
+            $("#new-name").on("blur keypress", function (e) {
+                if (e.type === "blur" || e.which === 13) {
+                    var newName = $("#new-name").val().trim();
+                    if (!newName) return;
+
+                    $.ajax({
+                        url: "{% url 'employee_crud' %}",
+                        type: "POST",
+                        data: JSON.stringify({ name: newName, action: "add" }),
+                        contentType: "application/json",
+                        headers: { "X-CSRFToken": "{{ csrf_token }}" },
+                        success: function (data) {
+                            $(".add-row").hide();
+                            $("#save-all, #discard").hide();
+                            $("#new-entry").show();
+                            $("#new-name").val("");
+
+                            $("tbody").append(`
+                                <tr data-id="${data.id}">
+                                    <td><input type="checkbox" class="delete-checkbox"></td>
+                                    <td><input type="text" class="edit-name" value="${data.name}"></td>
+                                </tr>
+                            `);
+                        }
+                    });
+                }
+            });
+
+            // Show bulk delete button when checkboxes are selected
+            $(document).on("change", ".delete-checkbox", function () {
+                if ($(".delete-checkbox:checked").length > 0) {
+                    $("#delete-selected").show();
+                } else {
+                    $("#delete-selected").hide();
+                }
+            });
+
+            // Bulk delete selected employees
+            $("#delete-selected").click(function () {
+                var selectedIds = $(".delete-checkbox:checked").closest("tr").map(function () {
+                    return $(this).data("id");
+                }).get();
+
+                $.ajax({
+                    url: "{% url 'employee_crud' %}",
+                    type: "POST",
+                    data: JSON.stringify({ ids: selectedIds, action: "delete_selected" }),
+                    contentType: "application/json",
+                    headers: { "X-CSRFToken": "{{ csrf_token }}" },
+                    success: function () {
+                        $(".delete-checkbox:checked").closest("tr").remove();
+                        $("#delete-selected").hide();
+                    }
+                });
+            });
+        });
+
+    </script>
+
+</body>
+
+</html>
