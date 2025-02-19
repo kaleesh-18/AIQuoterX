@@ -9,7 +9,7 @@ def employee_crud(request):
     if search_query:
         employees = Employee.objects.filter(name__icontains=search_query).order_by("id")
     else:
-        employees = Employee.objects.all().order_by("id")  # Ensure ordering
+        employees = Employee.objects.all().order_by("id")
     
     if request.method == "POST":
         try:
@@ -21,6 +21,19 @@ def employee_crud(request):
                 for emp_data in employees_data:
                     Employee.objects.filter(id=emp_data["id"]).update(name=emp_data["name"])
                 return JsonResponse({"success": True})
+
+            elif action == "update":  # New action for inline name update
+                emp_id = data.get("id")
+                new_name = data.get("name", "").strip()
+
+                if not emp_id or not new_name:
+                    return JsonResponse({"error": "Employee ID and name are required"}, status=400)
+
+                emp = get_object_or_404(Employee, id=emp_id)
+                emp.name = new_name
+                emp.save()
+
+                return JsonResponse({"success": True, "id": emp.id, "name": emp.name})
 
             elif action == "discard":
                 return JsonResponse({"success": True})  

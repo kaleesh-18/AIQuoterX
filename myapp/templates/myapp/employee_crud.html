@@ -180,6 +180,7 @@
                 }
             });
 
+
             // Bulk delete selected employees
             $("#delete-selected").click(function () {
                 var selectedIds = $(".delete-checkbox:checked").closest("tr").map(function () {
@@ -198,6 +199,36 @@
                     }
                 });
             });
+
+            // Update employee name on blur
+            $(document).on("blur", ".edit-name", function () {
+                var row = $(this).closest("tr");
+                var empId = row.data("id");
+                var newName = $(this).val().trim();
+
+                if (!newName) {
+                    console.log("Name is empty, not sending request");
+                    return;
+                }
+
+                console.log("Sending AJAX request with:", { id: empId, name: newName, action: "update" });
+
+                $.ajax({
+                    url: "{% url 'employee_crud' %}",
+                    type: "POST",
+                    data: JSON.stringify({ id: empId, name: newName, action: "update" }),
+                    contentType: "application/json",
+                    headers: { "X-CSRFToken": "{{ csrf_token }}" },
+                    success: function (response) {
+                        console.log("Success response:", response);
+                    },
+                    error: function (xhr) {
+                        console.log("Error response:", xhr.responseText);
+                        alert("Error updating employee name: " + xhr.responseText);
+                    }
+                });
+            });
+
         });
 
     </script>
